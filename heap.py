@@ -7,39 +7,67 @@ class SupportsLessOrEqual(Protocol):
 
 
 class Heap[T]:
-    def __init__(self, items: Iterable[T] = (), *, key: Callable[[T], SupportsLessOrEqual] = lambda item: item, reverse: bool = False):
-        self._storage: list[tuple[SupportsLessOrEqual, int, T]] = []  # [..., (key, count, value), ...]
+    def __init__(
+            self,
+            items: Iterable[T] = (),
+            /,
+            *,
+            key: Callable[[T], SupportsLessOrEqual] = lambda item: item,
+            reverse: bool = False
+    ):
+        self._storage: list[tuple[SupportsLessOrEqual, int, T]] = []  # [..., (key, id, value), ...]
         self._key: Callable[[T], SupportsLessOrEqual] = key
         self._reverse: bool = reverse
-        self._counter: int = 0
+        self._id_counter: int = 0
 
         for item in items:
-            self._storage.append((self._key(item), self._counter, item))
-            self._counter += 1
-        for i in range(len(self._storage) - 1, 0, -1):
-            self._sift_down(i)
+            self._storage.append((self._key(item), self._id_counter, item))
+            self._id_counter += 1
+        for index in range((len(self._storage)) // 2 - 1, -1, -1):
+            self._sift_down(index)
 
-    def _heap_rule(self, index: int) -> bool:
-        return index == 0 or self._reverse != (self._storage[index][:2] <= self._storage[(index - 1) // 2][:2])
+    def _parent(self, index: int) -> int:
+        return 0 if index == 0 else (index - 1) // 2
 
-    def _swap(self, index: int):
-        self._storage[index], self._storage[(index - 1) // 2] = (
-            self._storage[(index - 1) // 2], self._storage[index]
-        )
+    def _left(self, index: int) -> int:
+        return left if (left := index * 2 + 1) < len(self._storage) else index
 
-    def _sift_up(self, index: int):
-        while not self._heap_rule(index):
-            self._swap(index)
-            index = (index - 1) // 2
+    def _right(self, index: int) -> int:
+        return right if (right := index * 2 + 2) < len(self._storage) else index
 
-    def _sift_down(self, index: int):
-        while not ((left := self._heap_rule(index * 2 + 1)) and self._heap_rule(index * 2 + 2)):
-            index = index * 2 + (2 if left else 1)
-            self._swap(index)
+    def _less_or_equal(self, first: int, second: int, /) -> bool:
+        if first == second:
+            return True
+        return self._reverse != (self._storage[first][:2] <= self._storage[second][:2])
 
-    def push(self, item: T):
-        self._storage.append((self._key(item), self._counter, item))
-        self._counter += 1
+    def _swap(self, first: int, second: int, /):
+        self._storage[first], self._storage[second] = self._storage[second], self._storage[first]
+
+    def _sift_up(self, index: int, /):
+        while not self._less_or_equal(parent := self._parent(index), index):
+            self._swap(parent, index)
+            index = parent
+
+    def _sift_down(self, index: int, /):
+        while True:
+            left = self._left(index)
+            right = self._right(index)
+            left_f = not self._less_or_equal(index, left)
+            right_f = not self._less_or_equal(index, right)
+            if not left_f and not right_f:
+                break
+            if left_f and right_f:
+                left_f = self._less_or_equal(left, right)
+            if left_f:
+                self._swap(index, left)
+                index = left
+            else:
+                self._swap(index, right)
+                index = right
+
+    def push(self, item: T, /):
+        self._storage.append((self._key(item), self._id_counter, item))
+        self._id_counter += 1
 
         self._sift_up(len(self._storage) - 1)
 
@@ -47,8 +75,9 @@ class Heap[T]:
         if not self._storage:
             raise IndexError("pop from empty Heap")
         self._storage[0], self._storage[-1] = self._storage[-1], self._storage[0]
-        _, _, item = self._storage.pop(0)
-        self._sift_down(0)
+        _, _, item = self._storage.pop()
+        if self._storage:
+            self._sift_down(0)
         return item
 
     def get(self) -> T:
@@ -56,7 +85,7 @@ class Heap[T]:
             raise IndexError("get from empty Heap")
         return self._storage[0][2]
 
-    def extend(self, items: Iterable[T]):
+    def extend(self, items: Iterable[T], /):
         for item in items:
             self.push(item)
 
@@ -70,7 +99,7 @@ class Heap[T]:
         return bool(self._storage)
 
     def __contains__(self, item: T) -> bool:
-        return item in map(lambda s: s[3], self._storage)
+        return item in map(lambda s: s[2], self._storage)
 
     def __iter__(self) -> Iterator[T]:
-        return map(lambda s: s[3], self._storage)
+        return map(lambda s: s[2], self._storage)
