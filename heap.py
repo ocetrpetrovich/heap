@@ -103,3 +103,38 @@ class Heap[T]:
 
     def __iter__(self) -> Iterator[T]:
         return map(lambda s: s[2], self._storage)
+
+    def copy(self) -> Heap[T]:
+        copy = Heap[T](key=self._key, reverse=self._reverse)
+        copy._storage = self._storage.copy()
+        return copy
+
+
+h1 = Heap([2, 43, 56, 76, 8, 5, 4, 7, 3, 7, 3])
+
+h2 = Heap[int | float | str](key=int)
+# в каком порядке элементы добавлялись, в таком и выходят (если говорим про элементы с равными key)
+h2.push(0)
+h2.push(0.0)
+h2.push("0")
+# сравниваем именно по ключу
+h2.push(1.4)
+h2.push(1.3)
+h2.push(1.5)
+# можем добавлять разное
+h2.extend(["123", 1234.1234, 67, "76"])
+
+h3 = Heap(h2, key=int, reverse=True)
+
+while h1:
+    print(h1.get(), end=" ")
+    h1.pop()
+print()
+
+while h2:
+    print(repr(h2.pop()), end=" ")
+print()
+
+while h3:
+    print(repr(h3.pop()), end=" ")
+print()
